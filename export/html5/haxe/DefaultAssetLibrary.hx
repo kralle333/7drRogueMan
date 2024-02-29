@@ -1,0 +1,221 @@
+package;
+
+import haxe.Timer;
+import haxe.Unserializer;
+import openfl.Assets;
+import openfl.display.Bitmap;
+import openfl.display.BitmapData;
+import openfl.display.Loader;
+import openfl.events.Event;
+import openfl.media.Sound;
+import openfl.net.URLLoader;
+import openfl.net.URLRequest;
+import openfl.text.Font;
+import openfl.utils.ByteArray;
+
+class DefaultAssetLibrary extends openfl.AssetLibrary {
+	public var className(default, null) = new Map<String, Dynamic>();
+	public var path(default, null) = new Map<String, String>();
+	public var type(default, null) = new Map<String, AssetType>();
+	
+	private var lastModified:Float;
+	private var timer:Timer;
+	
+	public function new() {
+		super();
+		// register assets:
+		add("assets/images/enemies/ghost.png", IMAGE);
+		add("assets/images/enemies/poison.png", IMAGE);
+		add("assets/images/enemies/poisonSlime.png", IMAGE);
+		add("assets/images/enemies/slime.png", IMAGE);
+		add("assets/images/enemies/soldier.png", IMAGE);
+		add("assets/images/enemies/thief.png", IMAGE);
+		add("assets/images/items/heart.png", IMAGE);
+		add("assets/images/items/killPotion.png", IMAGE);
+		add("assets/images/items/movePotion.png", IMAGE);
+		add("assets/images/items/shoes.png", IMAGE);
+		add("assets/images/items/sword.png", IMAGE);
+		add("assets/images/items/wand.png", IMAGE);
+		add("assets/images/items/yendor.png", IMAGE);
+		add("assets/images/map/amuletRoom.png", IMAGE);
+		add("assets/images/map/blocksCastle.png", IMAGE);
+		add("assets/images/map/blocksForest.png", IMAGE);
+		add("assets/images/map/blocksLast.png", IMAGE);
+		add("assets/images/map/coin.png", IMAGE);
+		add("assets/images/map/sack.png", IMAGE);
+		add("assets/images/map/stairway.png", IMAGE);
+		add("assets/images/player.png", IMAGE);
+		add("assets/images/selectedbutton.png", IMAGE);
+		add("assets/images/shoes.ase", BINARY);
+		add("assets/images/tombstone.png", IMAGE);
+		add("assets/music/music-goes-here.txt", TEXT);
+		add("assets/sounds/buy.wav", SOUND);
+		add("assets/sounds/coin.wav", SOUND);
+		add("assets/sounds/dead.wav", SOUND);
+		add("assets/sounds/itemUse.wav", SOUND);
+		add("assets/sounds/kill.wav", SOUND);
+		add("assets/sounds/sack.wav", SOUND);
+		add("assets/sounds/step1.aup", TEXT);
+		add("assets/sounds/step1.wav", SOUND);
+		add("assets/sounds/step1_data/e00/d00/e000000f.au", BINARY);
+		add("assets/sounds/step1_data/e00/d00/e000005e.au", BINARY);
+		add("assets/sounds/step1_data/e00/d00/e0000094.au", BINARY);
+		add("assets/sounds/step1_data/e00/d00/e00000c5.au", BINARY);
+		add("assets/sounds/step1_data/e00/d00/e0000261.au", BINARY);
+		add("assets/sounds/step1_data/e00/d00/e0000652.au", BINARY);
+		add("assets/sounds/step1_data/e00/d00/e000087c.au", BINARY);
+		add("assets/sounds/step1_data/e00/d00/e0000a63.au", BINARY);
+		add("assets/sounds/step1_data/e00/d00/e0000b60.au", BINARY);
+		add("assets/sounds/step1_data/e00/d00/e0000b9d.au", BINARY);
+		add("assets/sounds/step1_data/e00/d00/e0000c3f.au", BINARY);
+		add("assets/sounds/step1_data/e00/d00/e0000d1a.au", BINARY);
+		add("assets/sounds/step1_data/e00/d00/e0000d51.au", BINARY);
+		add("assets/sounds/step2.wav", SOUND);
+		add("assets/sounds/step3.wav", SOUND);
+		add("assets/sounds/step4.wav", SOUND);
+		add("assets/sounds/steps.aup", TEXT);
+		add("assets/sounds/steps.wav", SOUND);
+		add("assets/sounds/steps_data/e00/d00/e0000011.au", BINARY);
+		add("assets/sounds/yendor.wav", SOUND);
+		add("assets/sounds/beep.mp3", MUSIC);
+		add("assets/sounds/flixel.mp3", MUSIC);
+		add("assets/sounds/beep.ogg", SOUND);
+		add("assets/sounds/flixel.ogg", SOUND);
+		//
+	}
+	
+	private function add(id:String, t:AssetType, ?p:String) {
+		type.set(id, t);
+		path.set(id, p != null ? p : id);
+	}
+	
+	override public function getPath(id:String):String {
+		return path.get(id);
+	}
+	
+	override public function exists(id:String, t:AssetType):Bool {
+		var r = type.get(id);
+		if (r != null) {
+			if (r == t || t == null) return true;
+			switch (t) {
+			case AssetType.SOUND: return r == AssetType.MUSIC;
+			case AssetType.MUSIC: return r == AssetType.SOUND;
+			case AssetType.BINARY: return true;
+			default: return false;
+			}
+		}
+		return false;
+	}
+	
+	override public function getBitmapData(id:String):BitmapData {
+		var q = ApplicationMain.loaders.get(path.get(id));
+		var b:Bitmap = cast q.contentLoaderInfo.content;
+		return b.bitmapData;
+	}
+	
+	override public function getFont(id:String):Font {
+		// not yet.
+		return null;
+	}
+	
+	override public function getSound(id:String):Sound {
+		return new Sound(new URLRequest(path.get(id)));
+	}
+	
+	override public function getMusic(id:String):Sound {
+		return new Sound(new URLRequest(path.get(id)));
+	}
+	
+	override public function getBytes(id:String):ByteArray {
+		var r:ByteArray = null;
+		var p = path.get(id);
+		var d = ApplicationMain.urlLoaders.get(p).data;
+		if (Std.is(d, String)) {
+			(r = new ByteArray()).writeUTFBytes(cast d);
+		} else if (Std.is(d, ByteArray)) {
+			r = cast d;
+		} else r = null;
+		if (r != null) {
+			r.position = 0;
+			return r;
+		} else return null;
+	}
+	
+	override public function getText(id:String):String {
+		var r:ByteArray = null;
+		var p = path.get(id);
+		var d = ApplicationMain.urlLoaders.get(p).data;
+		if (Std.is(d, String)) {
+			return cast d;
+		} else if (Std.is(d, ByteArray)) {
+			r = cast d;
+			r.position = 0;
+			return r.readUTFBytes(r.length);
+		} else return null;
+	}
+	
+	override public function list(t:AssetType):Array<String> {
+		var r:Array<String> = [];
+		for (id in type.keys()) {
+			if (t == null || exists(id, t)) r.push(id);
+		}
+		return r;
+	}
+	
+	override public function loadBitmapData(id:String, h:BitmapData->Void):Void {
+		if (path.exists(id)) {
+			var r = new Loader();
+			var f:Event->Void = null;
+			f = function(e:Event) {
+				r.contentLoaderInfo.removeEventListener(Event.COMPLETE, f);
+				var b:Bitmap = cast e.currentTarget.content;
+				h(b.bitmapData);
+				b = null; f = null; r = null;
+			};
+			r.addEventListener(Event.COMPLETE, f);
+			r.load(new URLRequest(path.get(id)));
+		} else h(getBitmapData(id));
+	}
+	
+	override public function loadFont(id:String, h:Font->Void):Void {
+		h(getFont(id));
+	}
+	
+	override public function loadSound(id:String, h:Sound->Void):Void {
+		h(getSound(id));
+	}
+	
+	override public function loadMusic(id:String, h:Sound->Void):Void {
+		h(getMusic(id));
+	}
+	
+	override public function loadBytes(id:String, h:ByteArray->Void):Void {
+		if (path.exists(id)) {
+			var r = new URLLoader();
+			var f:Event->Void = null;
+			f = function(e:Event) {
+				r.removeEventListener(Event.COMPLETE, f);
+				var b = new ByteArray();
+				b.writeUTFBytes(e.currentTarget.data);
+				b.position = 0;
+				h(b);
+				b = null; f = null; r = null;
+			};
+			r.addEventListener(Event.COMPLETE, f);
+		} else h(getBytes(id));
+	}
+	
+	override public function loadText(id:String, h:String->Void):Void {
+		if (path.exists(id)) {
+			var r = new URLLoader();
+			var f:Event->Void = null;
+			f = function(e:Event) {
+				r.removeEventListener(Event.COMPLETE, f);
+				h(e.currentTarget.data);
+				f = null; r = null;
+			};
+			r.addEventListener(Event.COMPLETE, f);
+		} else h(getText(id));
+	}
+	
+}
